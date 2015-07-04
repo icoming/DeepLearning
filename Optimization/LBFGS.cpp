@@ -2,7 +2,7 @@
 
 using namespace Optimization;
 
-LBFGS::LBFGS_param::LBFGS_param(int maxIter0, int memoryLimit0, int save, std::string str = "lbfgs_weight.dat"){
+LBFGS::LBFGS_param::LBFGS_param(int maxIter0, int memoryLimit0, int save, std::string str){
     maxIter = maxIter0;
     memoryLimit = memoryLimit0;
     maxLineSearch = 20;
@@ -33,7 +33,7 @@ LBFGS::LBFGS(ObjectFunc& func, LBFGS_param param0, LineSearch method):
 void LBFGS::minimize(){
 	
     int iter = 0;
-    double grad_norm = arma::norm(grad);
+    double grad_norm = grad.norm2();
     std::cout << "initial gradient norm is:" << grad_norm << std::endl;
     std::cout << "initial value is:" << currValue << std::endl;
     while (iter < param.maxIter) {
@@ -50,7 +50,7 @@ void LBFGS::minimize(){
         }
 	
 	updateParam();
-        double grad_norm = arma::norm(grad);
+        double grad_norm = grad.norm2();
         std::cout << "current gradient norm is:" << grad_norm << std::endl;
         std::cout << "current value is:" << currValue << std::endl;
         std::cout << "step length is:" << step << std::endl;
@@ -66,7 +66,7 @@ void LBFGS::minimize(){
 }
 
 void LBFGS::saveWeight(std::string str= "lbfgs_weight.dat"){
-    x.save(str,arma::raw_ascii);
+//    x.save(str,arma::raw_ascii);
 }
 
 
@@ -78,17 +78,17 @@ void LBFGS::calDirection(){
 	
     if (count != 0) {
 	for (int i = count -1; i >= 0; i--) {
-            alpha_list[i] = rho_list[i] * arma::as_scalar( s_list[i].st() * direction );			
-            direction -= alpha_list[i] * y_list[i];
+            alpha_list[i] = rho_list[i] * fm::as_scalar<double>( fm::t(s_list[i]) * direction );			
+            direction = direction - alpha_list[i] * y_list[i];
 	}
 
 // here the scalar is from nonlinear optimization equation (7.20)		
-        double scalar = rho_list[count - 1] / arma::as_scalar( y_list[count - 1].st() * y_list[count - 1] );
-	direction *= scalar;
+        double scalar = rho_list[count - 1] / fm::as_scalar<double>( fm::t(y_list[count - 1]) * y_list[count - 1] );
+	direction = direction * scalar;
 		
 	for (int i = 0; i < count; i++) {
-            double beta = rho_list[i] * arma::as_scalar(y_list[i].st() * direction);
-            direction += s_list[i] * (alpha_list[i] - beta); 
+            double beta = rho_list[i] * fm::as_scalar<double>(fm::t(y_list[i]) * direction);
+            direction = direction + s_list[i] * (alpha_list[i] - beta); 
 	}
 		
 	}
@@ -98,7 +98,7 @@ void LBFGS::calDirection(){
 void LBFGS::updateParam(){
 	
 	int listSize = (int) s_list.size();
-	arma::vec s_next, y_next;
+	fm::col_vec s_next, y_next;
 	
 	if (listSize == memoryLimit){
 // if memory limit is reached		
@@ -112,7 +112,7 @@ void LBFGS::updateParam(){
 	s_next = x_new - x;;
 	y_next = grad_new - grad;
 	
-	double rho = 1.0/ arma::as_scalar( s_next.st() * y_next );
+	double rho = 1.0/ fm::as_scalar<double>( fm::t(s_next) * y_next );
 	
 	s_list.push_back(s_next);
 	y_list.push_back(y_next);
@@ -126,8 +126,8 @@ void LBFGS::updateParam(){
 
 void LBFGS::calStepLength_Armijo(){
     
-    double dirDeriv_init = arma::as_scalar(direction.st() * grad);
-    double normDir =  sqrt(arma::as_scalar(direction.st() * direction));  
+    double dirDeriv_init = fm::as_scalar<double>(fm::t(direction) * grad);
+    double normDir =  sqrt(fm::as_scalar<double>(fm::t(direction) * direction));  
  //   std::cout << "current direction derivative:" << dirDeriv_init << std::endl;
 //    initial step
 //    step = 1.0;
@@ -143,6 +143,9 @@ void LBFGS::calStepLength_Armijo(){
         value = calValGrad(x_new, grad_new);   
         if( value < currValue + c1 * step * dirDeriv_init) break;       
         step = tau * step;
+		if (step > param.maxIter) {
+			std::cout << "cannot find correct step size" << std::endl;
+		}
     }
 
     currValue = value;
@@ -151,8 +154,8 @@ void LBFGS::calStepLength_Armijo(){
 void LBFGS::calStepLength_Wolfe(){
 //	dirDeriv is (grad f)^T * Direction
     double value;
-    double dirDeriv_init = arma::as_scalar(direction.st() * grad);
-    double normDir =  sqrt(arma::as_scalar(direction.st() * direction));   
+    double dirDeriv_init = fm::as_scalar<double>(fm::t(direction) * grad);
+    double normDir =  sqrt(fm::as_scalar<double>(fm::t(direction) * direction));   
 //    std::cout << "current direction derivative:" << dirDeriv_init << std::endl;
     if (dirDeriv_init >= 0) {		
 	std::cout << "gradient is wrong!" << std::endl;
@@ -173,7 +176,7 @@ void LBFGS::calStepLength_Wolfe(){
     for (int iter = 0; iter < param.maxLineSearch ; iter++) {
 	x_new = x + step * direction;
         currValue = calValGrad(x_new, grad_new);
-        double dirDeriv_new = arma::as_scalar(direction.st() * grad_new);
+        double dirDeriv_new = fm::as_scalar<double>(fm::t(direction) * grad_new);
 		
 	PointValueDeriv curr(step, currValue, dirDeriv_new);
 		
@@ -211,7 +214,7 @@ void LBFGS::calStepLength_Wolfe(){
 void LBFGS::calStepLength_MoreThuente(){
 //	dirDeriv is (grad f)^T * Direction
     double value;
-    double dirDeriv = arma::as_scalar(direction.st() * grad);
+    double dirDeriv = fm::as_scalar<double>(fm::t(direction) * grad);
         
     if (dirDeriv >= 0) {		
 	abort();
@@ -235,7 +238,7 @@ void LBFGS::calStepLength_MoreThuente(){
     for (int iter = 0; iter < maxIter ; iter++) {
 	x_new = x + step * direction;
         double value = calValGrad(x_new, grad_new);
-        double dirDeriv_new = arma::as_scalar(direction.st() * grad_new);
+        double dirDeriv_new = fm::as_scalar<double>(fm::t(direction) * grad_new);
 		
 	PointValueDeriv curr(step, value, dirDeriv_new);
 		
@@ -292,7 +295,7 @@ void LBFGS::calStepLength_MoreThuente(){
             abort();
 	}
 
-	double dirDeriv_new = arma::as_scalar(direction.st() * grad_new);
+	double dirDeriv_new = fm::as_scalar<double>(fm::t(direction) * grad_new);
 	PointValueDeriv curr(step, value, dirDeriv_new);
 
 	if ((curr.value > currValue + c1 * step *dirDeriv) || (curr.value >= aLo.value)) {

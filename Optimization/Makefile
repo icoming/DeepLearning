@@ -6,6 +6,7 @@ MKL_INCLUDE = /opt/intel/composerxe/mkl/include
 
 #CFLAGS = -std=c++0x -I/g/ssli/software/pkgs/boost_1_49_0 -c -DNDEBUG -D__LINUX $(OPTFLAGS) 
 CPP = g++
+CXX = clang++
 #MKLROOT = /opt/intel/mkl
 #MKLROOT = /opt/intel/composer_xe_2013.0.079/mkl
 MKLROOT = /opt/intel/composerxe/mkl
@@ -14,16 +15,16 @@ MKL_DL_LINKFLAGS =  -Wl,--no-as-needed -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64
 ARMA_INCLUDE=-I~/Downloads/armadillo-5.100.2/include/armadillo
 ARMA_LINKFLAGS=-L/usr/lib -L/opt/intel/mkl/lib/intel64 -larmadillo -lmkl_rt -llapack -lblas
 #MKLLINKFLAGS = -Wl,--start-group -Wl,--end-group -lpthread
-CXXFLAGS = -std=c++0x -I$(MKL_INCLUDE) $(ARMA_INCLUDE) -I/opt/boost/boost_1_57_0 -c -DDEBUG -D__LINUX -g3
+CXXFLAGS = -std=c++0x -I$(MKL_INCLUDE) $(ARMA_INCLUDE) -I/opt/boost/boost_1_57_0 -c -DDEBUG -D__LINUX -g3 -I../../matrix
 LINKOPTFLAGS = -O3 -flto=4 -fwhole-program
 #LINKFLAGS = -static $(LINKOPTFLAGS) $(MKLLINKFLAGS) -ldl
-LINK_DL_FLAGS =  $(MKL_DL_LINKFLAGS) $(ARMA_LINKFLAGS) -ldl
+LINK_DL_FLAGS =  $(MKL_DL_LINKFLAGS) $(ARMA_LINKFLAGS) -ldl -L../../matrix -lFMatrix -L/home/zhengda/intel/mkl/lib/intel64/ -L../../flash-graph -lgraph -L../../libsafs -lsafs -L../../libcommon -lcommon -fopenmp -lnuma -lstxxl -lz -laio
 #LINKFLAGS = 
 #ODIR=obj
 ODIR =
 
 
-OBJ = main.o LBFGS.o SteepDescent.o
+OBJ = main.o LBFGS.o
 
 test : $(OBJ)
 	$(CPP) -o test $(OBJ) $(LINK_DL_FLAGS)

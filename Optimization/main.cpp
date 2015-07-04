@@ -4,57 +4,54 @@
 #include <cstdlib>
 #include <cstdio>
 #include <memory>
-#include <armadillo>
 #include "optimization.h"
 #include <vector>
 
-void loadData_MNIST(std::shared_ptr<arma::mat> X,
-                    std::shared_ptr<arma::mat> Y);
+void loadData_MNIST(fm::dense_matrix::ptr X, fm::dense_matrix::ptr Y);
 
 using namespace Optimization;
 
 struct MyFunc: public ObjectFunc{
 
     MyFunc(int dim):ObjectFunc(dim){
-        x_init = std::make_shared<arma::vec>(dim,arma::fill::randn);
+		x_init = fm::col_vec::create_randn<double>(dim);
     }
     
-    virtual double operator()(arma::vec &x, arma::vec &grad){
+    virtual double operator()(fm::col_vec &x, fm::col_vec &grad){
         
-        grad = 2.0* x;
-        return arma::as_scalar(x.st() * x);
+        grad = x * 2.0;
+        return fm::as_scalar<double>(fm::t(x) * x);
     }
     
 };
 
 struct MyFunc2: public ObjectFunc{
 
-    arma::mat W;
-    arma::vec b;
+//    fm::dense_matrix W;
+    fm::col_vec b;
     MyFunc2(int dim):ObjectFunc(dim){
-        W.eye(dim,dim);
-        b = arma::randu(dim);
+//        W = *fm::dense_matrix::create_randu<double>(1, 2, dim,dim,
+//				fm::matrix_layout_t::L_COL);
+        b = *fm::col_vec::create_randu<double>(dim);
         
-        x_init = std::make_shared<arma::vec>(dim,arma::fill::randn);
+		x_init = fm::col_vec::create_randn<double>(dim);
     }
     
-    virtual double operator()(arma::vec &x, arma::vec &grad){
-        
-        
-        grad = W * x + b;
-        return arma::as_scalar(0.5 * x.st() * W * x + b.st()*x);
+    virtual double operator()(fm::col_vec &x, fm::col_vec &grad){
+        grad = x + b;
+        return fm::as_scalar<double>(0.5 * fm::t(x) * x + fm::t(b)*x);
     }
     
 };
-
+#if 0
 struct MyFunc3: public ObjectFunc{
 
     MyFunc3(int dim = 2):ObjectFunc(dim){
         
-        x_init = std::make_shared<arma::vec>(dim,arma::fill::randn);
+		x_init = fm::col_vec::create_randn<double>(dim);
     }
     
-    virtual double operator()(arma::vec &x, arma::vec &grad){
+    virtual double operator()(fm::col_vec &x, fm::col_vec &grad){
         
         double F = 10.0 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (x[0] - 1) * (x[0] - 1);
         
@@ -65,12 +62,13 @@ struct MyFunc3: public ObjectFunc{
     }
     
 };
-
+#endif
+#if 0
 struct MyFunc4: public ObjectFunc{
 
     MyFunc4(int dim = 5000):ObjectFunc(dim){
          /* Initialize the variables. */
-        x_init = std::make_shared<arma::vec>(dim,arma::fill::randn); 
+		x_init = fm::col_vec::create_randn<double>(dim);
     for (int i = 0;i < dim;i += 2) {
         (*x_init)[i] = -1.2;
         (*x_init)[i+1] = 1.0;
@@ -78,7 +76,7 @@ struct MyFunc4: public ObjectFunc{
 
     }
     
-    virtual double operator()(arma::vec &x, arma::vec &grad){
+    virtual double operator()(fm::col_vec &x, fm::col_vec &grad){
         double fx = 0;
         grad.resize(dim);
     for (int i = 0;i < dim; i += 2) {
@@ -93,36 +91,36 @@ struct MyFunc4: public ObjectFunc{
     }
     
 };
-
+#endif
 
 int main(int argc, char *argv[]) {
-    arma::wall_clock timer;
-    int dim = 5;
+//    arma::wall_clock timer;
+    int dim = 50000000;
     
     MyFunc myFunc(dim);
     
-    arma::vec x(dim);
-    arma::vec grad;
+    fm::col_vec x(dim, fm::get_scalar_type<double>());
+	fm::col_vec grad(0, fm::get_scalar_type<double>());
 //    x.randu();
     
 //    x.print();
 //    std::cout << myFunc(x,grad) << std::endl;
 //    grad.print();
-    LBFGS::LBFGS_param param(200,20);
+    LBFGS::LBFGS_param param(200,20,20);
 
 //    std::cout << "test case 1" << std::endl;
 //    LBFGS lbfgs_opt(myFunc,param);
 //    lbfgs_opt.minimize();
- /*    
+     
     std::cout << "test case 2" << std::endl;
     MyFunc2 myFunc2(dim);
-    LBFGS  *lbfgs_opt2=new LBFGS(myFunc2,param,LBFGS::Armijo);
+//    LBFGS  *lbfgs_opt2=new LBFGS(myFunc2,param,LBFGS::Armijo);
+//    lbfgs_opt2->minimize();
+//    delete lbfgs_opt2;
+    LBFGS *lbfgs_opt2 = new LBFGS(myFunc2,param,LBFGS::Wolfe);
     lbfgs_opt2->minimize();
     delete lbfgs_opt2;
-    lbfgs_opt2 = new LBFGS(myFunc2,param,LBFGS::Wolfe);
-    lbfgs_opt2->minimize();
-    delete lbfgs_opt2;
-   
+/*   
     std::cout << "test case 3" << std::endl;
     MyFunc3 myFunc3;
     lbfgs_opt2=new LBFGS(myFunc3,param,LBFGS::Armijo);
@@ -145,22 +143,21 @@ int main(int argc, char *argv[]) {
     timer.tic();
     
    */
-  std::cout << "test case 5" << std::endl;
-    MyFunc4 myFunc4;
-    LBFGS  *lbfgs_opt5=new LBFGS(myFunc4,param,LBFGS::Armijo);
-    lbfgs_opt5->minimize();
-    delete lbfgs_opt5;
-    lbfgs_opt5 = new LBFGS(myFunc4,param,LBFGS::Wolfe);
-    lbfgs_opt5->minimize();
-    delete lbfgs_opt5;
+//  std::cout << "test case 5" << std::endl;
+//    MyFunc4 myFunc4;
+//    LBFGS  *lbfgs_opt5=new LBFGS(myFunc4,param,LBFGS::Armijo);
+//    lbfgs_opt5->minimize();
+//    delete lbfgs_opt5;
+//    lbfgs_opt5 = new LBFGS(myFunc4,param,LBFGS::Wolfe);
+//    lbfgs_opt5->minimize();
+//    delete lbfgs_opt5;
     
-    std::cout << "time cost is" << timer.toc() << std::endl;
+//    std::cout << "time cost is" << timer.toc() << std::endl;
     return 0;
 }
 
-
-void loadData_MNIST(std::shared_ptr<arma::mat> X,
-                    std::shared_ptr<arma::mat> Y) {
+/*
+void loadData_MNIST(fm::dense_matrix::ptr X, fm::dense_matrix::ptr Y) {
 
     std::string filename_base("../MNIST/data");
     std::string filename;
@@ -172,8 +169,9 @@ void loadData_MNIST(std::shared_ptr<arma::mat> X,
     int labelSize = 10;
     int numSamples = 1000;
     X->set_size(numFiles*numSamples,featSize);
-    Y->set_size(numFiles*numSamples,labelSize);
-    Y->fill(0);
+	fm::dense_matrix::ptr tmp = fm::dense_matrix::create_const<double>(
+			0, numFiles*numSamples, labelSize, fm::matrix_layout_t::L_COL);
+	Y->assign(*tmp);
 //  std::cout << Y.Len() << std::endl;
 //  std::cout << X.NumR() << std::endl;
 //  std::cout << X.NumC() << std::endl;
@@ -185,6 +183,7 @@ void loadData_MNIST(std::shared_ptr<arma::mat> X,
         std::ifstream infile;
         infile.open(filename,std::ios::binary | std::ios::in);
         if (infile.is_open()) {
+			fm::detail::raw_data_array arr(1000);
 
             for (int j = 0 ; j < numSamples ; j++) {
 
@@ -211,3 +210,4 @@ void loadData_MNIST(std::shared_ptr<arma::mat> X,
         std::cout << "dataloading finish!" <<std::endl;
     }
 }
+*/

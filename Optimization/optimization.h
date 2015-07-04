@@ -2,17 +2,17 @@
 
 #include <memory>
 #include <vector>
-#include <armadillo>
 #include <deque>
 #include "Globals.h"
+#include "dense_matrix.h"
 
 namespace Optimization{
 
 struct ObjectFunc{
     ObjectFunc(int dim0 = 0):dim(dim0){}
     int dim;
-    std::shared_ptr<arma::vec> x_init;
-    virtual double operator()(arma::vec &x, arma::vec &grad) = 0;
+	fm::col_vec::ptr x_init;
+    virtual double operator()(fm::col_vec &x, fm::col_vec &grad) = 0;
 };
 
 class LBFGS{
@@ -27,7 +27,7 @@ public:
             double minStepSize;
             int saveFrequency;
             std::string saveFileName;
-            LBFGS_param(int, int, int, std::string);};
+            LBFGS_param(int, int, int, std::string str = "lbfgs_weight.dat");};
 	struct PointValueDeriv {
             double step, value, deriv;
             PointValueDeriv(double step0 = NaN, double value0 = NaN, double deriv0 = NaN) : 
@@ -52,12 +52,12 @@ public:
         LineSearch lineSearchMethod;
 // 	s_{k-1} = x_k - x_{k-1}
 //  y_{k-1} = (grad_k - grad_{k-1})
-	std::deque<arma::vec> s_list, y_list;
+	std::deque<fm::col_vec> s_list, y_list;
 // rho_k =1.0 /(y_k^T * s_k)	
 	std::deque<double> rho_list;
 	std::vector<double> alpha_list;	
-        arma::vec direction;
-	arma::vec grad, x, x_init, x_new, grad_new;
+        fm::col_vec direction;
+	fm::col_vec grad, x, x_init, x_new, grad_new;
 };
 
 class SteepDescent{
@@ -75,7 +75,7 @@ private:
     double eps;
     double step;
     int maxIter;
-    arma::vec grad, grad_new, x, x_new;
+    fm::col_vec grad, grad_new, x, x_new;
     double currValue;
     SteepDescent_param param;
     ObjectFunc &calValGrad;

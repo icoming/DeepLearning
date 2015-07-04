@@ -1,6 +1,5 @@
 #include<iostream>
 #include "optimization.h"
-#include <armadillo>
 
 using namespace Optimization;
 
@@ -31,7 +30,7 @@ void SteepDescent::minimize() {
         double currValue = calValGrad(x_new,grad_new);
 //        if( !quiet ) {
             std::cout << "iter:" << iter << "\t" ;
-            double gradNorm =  arma::norm(grad_new);
+            double gradNorm =  grad_new.norm2();
             std::cout << "current gradient norm is:" << gradNorm << std::endl;
             std::cout << "current value is:" << currValue << std::endl; 
 //        }
